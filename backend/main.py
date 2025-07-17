@@ -15,13 +15,11 @@ DB_NAME = "s2422051"
 
 DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}/{DB_NAME}"
 
-# エラーの原因だった connect_args を削除
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 # --- 2. データベースのモデル定義 (テーブル設計) ---
-# 「カテゴリ」と「サイト」を管理する新しい設計
 class Category(Base):
     __tablename__ = "categories"
     id = Column(Integer, primary_key=True, index=True)
@@ -55,6 +53,9 @@ class CategoryBase(BaseModel):
 class CategoryCreate(CategoryBase):
     pass
 
+class CategoryUpdate(CategoryBase):
+    pass
+
 class CategoryResponse(CategoryBase):
     id: int
     sites: List[SiteResponse] = []
@@ -62,7 +63,6 @@ class CategoryResponse(CategoryBase):
         from_attributes = True
 
 # --- 4. データベースのテーブル作成 ---
-# このコードが実行されると、PostgreSQL内にテーブルが作られます
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
@@ -85,7 +85,9 @@ def get_db():
     finally:
         db.close()
 
-# --- 5. APIエンドポイント (タブ管理アプリ用) ---
+# --- 5. APIエンドポイント (カテゴリ・サイト管理) ---
+
+# カテゴリ作成
 @app.post("/api/categories", response_model=CategoryResponse)
 def create_category(category: CategoryCreate, db: Session = Depends(get_db)):
     db_category = Category(name=category.name)
@@ -94,11 +96,34 @@ def create_category(category: CategoryCreate, db: Session = Depends(get_db)):
     db.refresh(db_category)
     return db_category
 
+# 全カテゴリ取得
 @app.get("/api/categories", response_model=List[CategoryResponse])
 def read_categories(db: Session = Depends(get_db)):
     categories = db.query(Category).all()
     return categories
 
+# カテゴリ更新 (新規追加)
+@app.put("/api/categories/{category_id}", response_model=CategoryResponse)
+def update_category(category_id: int, category: CategoryUpdate, db: Session = Depends(get_db)):
+    db_category = db.query(Category).filter(Category.id == category_id).first()
+    if db_category is None:
+        raise HTTPException(status_code=404, detail="Category not found")
+    db_category.name = category.name
+    db.commit()
+    db.refresh(db_category)
+    return db_category
+
+# カテゴリ削除 (新規追加)
+@app.delete("/api/categories/{category_id}", status_code=204)
+def delete_category(category_id: int, db: Session = Depends(get_db)):
+    db_category = db.query(Category).filter(Category.id == category_id).first()
+    if db_category is None:
+        raise HTTPException(status_code=404, detail="Category not found")
+    db.delete(db_category)
+    db.commit()
+    return
+
+# サイト作成
 @app.post("/api/sites", response_model=SiteResponse)
 def create_site(site: SiteCreate, db: Session = Depends(get_db)):
     db_site = Site(**site.dict())
@@ -107,6 +132,7 @@ def create_site(site: SiteCreate, db: Session = Depends(get_db)):
     db.refresh(db_site)
     return db_site
 
+# サイト削除
 @app.delete("/api/sites/{site_id}", status_code=204)
 def delete_site(site_id: int, db: Session = Depends(get_db)):
     db_site = db.query(Site).filter(Site.id == site_id).first()
