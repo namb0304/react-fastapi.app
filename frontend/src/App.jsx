@@ -35,19 +35,22 @@ function SiteItem({ site, onDelete, onUpdateTitle }) {
   return (
     <li className={`site-item ${isDragging ? 'dragging' : ''}`} ref={setNodeRef} style={style} {...attributes}>
       <span className="grab-handle" {...listeners}><GrabHandleIcon /></span>
-      <a href={site.url} target="_blank" rel="noopener noreferrer" className="site-link-area">
-        <img src={site.favicon_url || 'https://placehold.co/32x32/e9ecef/6c757d?text=?'} alt="" className="site-favicon" onError={(e) => { e.target.onerror = null; e.target.src='https://placehold.co/32x32/e9ecef/6c757d?text=?'; }}/>
-        {isEditing ? (
+      {isEditing ? (
+        <div className="site-link-area">
+            <img src={site.favicon_url || 'https://placehold.co/32x32/e9ecef/6c757d?text=?'} alt="" className="site-favicon" />
             <div className="site-title-container">
                 <input type="text" value={title} onChange={e => setTitle(e.target.value)} onBlur={handleTitleUpdate} onKeyDown={e => e.key === 'Enter' && handleTitleUpdate()} autoFocus onClick={e => e.preventDefault()} />
             </div>
-        ) : (
+        </div>
+      ) : (
+        <a href={site.url} target="_blank" rel="noopener noreferrer" className="site-link-area">
+            <img src={site.favicon_url || 'https://placehold.co/32x32/e9ecef/6c757d?text=?'} alt="" className="site-favicon" onError={(e) => { e.target.onerror = null; e.target.src='https://placehold.co/32x32/e9ecef/6c757d?text=?'; }}/>
             <span>{site.title}</span>
-        )}
-      </a>
+        </a>
+      )}
       <div className="site-actions">
-          <button onClick={() => setIsEditing(true)} title="サイト名を編集"><EditIcon /></button>
-          <button onClick={(e) => onDelete(e, site.id)} title="サイトを削除"><DeleteIcon /></button>
+          <button onMouseDown={(e) => e.stopPropagation()} onClick={() => setIsEditing(true)} title="サイト名を編集"><EditIcon /></button>
+          <button onMouseDown={(e) => e.stopPropagation()} onClick={(e) => onDelete(e, site.id)} title="サイトを削除"><DeleteIcon /></button>
       </div>
     </li>
   );
@@ -75,14 +78,15 @@ function CategoryCard({ category, children, onDeleteCategory, onUpdateCategory }
 
   return (
      <div className={`category-card ${isDragging ? 'dragging' : ''}`} ref={setNodeRef} style={style} {...attributes}>
-        <div className="category-header" {...listeners}>
+        <div className="category-header">
             {isEditing ? (
-                 <input type="text" value={name} onChange={e => setName(e.target.value)} onBlur={handleNameUpdate} onKeyDown={e => e.key === 'Enter' && handleNameUpdate()} autoFocus />
+                 <input type="text" value={name} onChange={e => setName(e.target.value)} onBlur={handleNameUpdate} onKeyDown={e => e.key === 'Enter' && handleNameUpdate()} autoFocus onClick={(e) => e.stopPropagation()} />
             ) : (
                 <h2 onDoubleClick={() => setIsEditing(true)} title="ダブルクリックで編集">{category.name}</h2>
             )}
           <div className="category-actions">
-            <button onClick={() => onDeleteCategory(category.id)} title="カテゴリを削除"><DeleteIcon /></button>
+            <button className="grab-handle" {...listeners}><GrabHandleIcon /></button>
+            <button onMouseDown={(e) => e.stopPropagation()} onClick={(e) => onDeleteCategory(e, category.id)} title="カテゴリを削除"><DeleteIcon /></button>
           </div>
         </div>
         {children}
@@ -135,7 +139,8 @@ function App() {
     axios.put(`${API_URL}/api/sites/${siteId}`, { title: newTitle }).then(fetchData);
   };
 
-  const handleDeleteCategory = categoryId => {
+  const handleDeleteCategory = (e, categoryId) => {
+    e.stopPropagation();
     if (window.confirm('このカテゴリと含まれる全てのサイトを削除します。よろしいですか？')) {
       axios.delete(`${API_URL}/api/categories/${categoryId}`).then(fetchData);
     }
@@ -146,7 +151,7 @@ function App() {
   };
   
   function getContainerId(id) {
-    if (id.toString().startsWith('category-')) {
+    if (typeof id === 'string' && id.startsWith('category-')) {
       return id;
     }
     for (const category of categories) {
@@ -166,42 +171,40 @@ function App() {
 
     if (activeId === overId) return;
 
-    const activeContainerId = getContainerId(activeId);
-    let overContainerId = getContainerId(overId);
-    
-    // サイトをカテゴリカード自体にドロップした場合の処理
-    if (overId.toString().startsWith('category-')) {
-        overContainerId = overId;
-    }
-
-    if (!activeContainerId || !overContainerId) return;
-
     // カテゴリの並び替え
-    if (activeId.toString().startsWith('category-')) {
-        setCategories((items) => {
-            const oldIndex = items.findIndex(item => `category-${item.id}` === activeId);
-            const newIndex = items.findIndex(item => `category-${item.id}` === overId);
-            if (oldIndex === -1 || newIndex === -1) return items;
+    if (activeId.startsWith('category-') && overId.startsWith('category-')) {
+      setCategories((items) => {
+        const oldIndex = items.findIndex(item => `category-${item.id}` === activeId);
+        const newIndex = items.findIndex(item => `category-${item.id}` === overId);
+        if (oldIndex === -1 || newIndex === -1) return items;
 
-            const newArray = arrayMove(items, oldIndex, newIndex);
-            const orderUpdates = newArray.map((cat, index) => ({ id: cat.id, order: index }));
-            axios.post(`${API_URL}/api/update-order/categories`, orderUpdates);
-            return newArray;
-        });
-        return;
+        const newArray = arrayMove(items, oldIndex, newIndex);
+        const orderUpdates = newArray.map((cat, index) => ({ id: cat.id, order: index }));
+        axios.post(`${API_URL}/api/update-order/categories`, orderUpdates);
+        return newArray;
+      });
+      return;
     }
 
     // サイトの並び替え
-    setCategories(prev => {
+    if (activeId.startsWith('site-')) {
+      const activeContainerId = getContainerId(activeId);
+      let overContainerId = getContainerId(overId);
+      if (overId.startsWith('category-')) {
+          overContainerId = overId;
+      }
+
+      if (!activeContainerId || !overContainerId) return;
+
+      setCategories(prev => {
         const sourceCatIndex = prev.findIndex(c => `category-${c.id}` === activeContainerId);
         const destCatIndex = prev.findIndex(c => `category-${c.id}` === overContainerId);
         const activeIndex = prev[sourceCatIndex].sites.findIndex(s => `site-${s.id}` === activeId);
         
-        // overがサイトかカテゴリかで終点のインデックスを決める
         let overIndex;
-        if (overId.toString().startsWith('site-')) {
+        if (overId.startsWith('site-')) {
             overIndex = prev[destCatIndex].sites.findIndex(s => `site-${s.id}` === overId);
-        } else { // カテゴリにドロップされた場合
+        } else {
             overIndex = prev[destCatIndex].sites.length;
         }
 
@@ -225,7 +228,8 @@ function App() {
             axios.post(`${API_URL}/api/move-site`, { site_id: siteId, new_category_id: newCategoryId });
         }
         return newCategories;
-    });
+      });
+    }
   }
   
   const filteredCategories = useMemo(() => categories.map(category => ({
@@ -256,7 +260,7 @@ function App() {
             <input type="text" value={newSite.title} onChange={e => setNewSite({...newSite, title: e.target.value})} placeholder="サイト名 (空欄で自動取得)" />
             <input type="url" value={newSite.url} onChange={e => setNewSite({...newSite, url: e.target.value})} placeholder="URL" required />
             <select value={newSite.category_id} onChange={e => setNewSite({...newSite, category_id: e.target.value})} required>
-              <option value="" disabled>カテゴリ選択</option>
+              <option value="" disabled>カテゴリを選択</option>
               {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
             </select>
             <button type="submit" className="primary-btn">サイト追加</button>

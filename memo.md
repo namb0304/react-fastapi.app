@@ -8,6 +8,7 @@ docker stop my-postgres
 docker rm my-postgres
 docker run --name my-postgres -e POSTGRES_USER=s2422051 -e POSTGRES_PASSWORD=mysecretpassword -e POSTGRES_DB=s2422051 -p 5432:5432 -d postgres
 93e915f730c42910d9fc068ac6cc52ae163c3d803118009aa2a1b72bc49b980c
+
 ~ % docker exec -it my-postgres psql -U s2422051
 
 

@@ -130,11 +130,6 @@ body {
   margin-bottom: 15px;
   border-bottom: 1px solid var(--border-color);
   padding-bottom: 10px;
-  cursor: grab;
-}
-
-.category-header:active {
-  cursor: grabbing;
 }
 
 .category-header h2,
@@ -148,7 +143,7 @@ body {
   border: 1px solid transparent;
 }
 .category-header h2:hover {
-  background-color: #f0efef;
+  background-color: #f0f0f0;
   cursor: text;
 }
 .category-header input {
@@ -156,6 +151,11 @@ body {
   font-family: var(--font-family);
 }
 
+
+.category-actions {
+  display: flex;
+  align-items: center;
+}
 
 .category-actions button {
   background: none;
@@ -204,9 +204,12 @@ body {
 .site-item.dragging {
   background-color: var(--dragging-color);
   box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  z-index: 20;
 }
 
 .grab-handle {
+  display: flex;
+  align-items: center;
   cursor: grab;
   padding: 5px;
   color: var(--light-text-color);
