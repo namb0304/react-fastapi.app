@@ -1,0 +1,28 @@
+# OS / Editor specific files
+.DS_Store
+.vscode/
+.idea/
+
+# --- Frontend (React/Vite) ---
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+frontend/*.local
+
+# Frontend Logs
+frontend/logs/
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/pnpm-debug.log*
+frontend/lerna-debug.log*
+
+# --- Backend (Python/FastAPI) ---
+backend/venv/
+backend/__pycache__/
+backend/*.pyc
+
+# Database files
+# Dockerで管理している場合は不要ですが、念のため
+*.db
+*.sqlite3
