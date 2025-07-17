@@ -16,8 +16,9 @@ function App() {
   const [categories, setCategories] = useState([]);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newSite, setNewSite] = useState({ title: '', url: '', category_id: '' });
-  const [editingCategory, setEditingCategory] = useState(null); // { id, name }
+  const [editingCategory, setEditingCategory] = useState(null);
   const [showPopupNotice, setShowPopupNotice] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
   // --- データ取得 ---
   const fetchData = () => {
@@ -51,8 +52,10 @@ function App() {
   };
 
   const handleDeleteSite = (siteId) => {
-    axios.delete(`${API_URL}/api/sites/${siteId}`)
-      .then(() => fetchData());
+    if (window.confirm('このサイトを削除しますか？')) {
+      axios.delete(`${API_URL}/api/sites/${siteId}`)
+        .then(() => fetchData());
+    }
   };
   
   const handleEditCategory = (category) => {
@@ -78,10 +81,22 @@ function App() {
   const handleLaunchAll = (sites) => {
     if (sites.length > 1) {
       setShowPopupNotice(true);
-      setTimeout(() => setShowPopupNotice(false), 5000); // 5秒後に通知を消す
+      setTimeout(() => setShowPopupNotice(false), 5000);
     }
     sites.forEach(site => window.open(site.url, '_blank'));
   };
+
+  // --- 検索機能のためのフィルタリング ---
+  const filteredCategories = categories.map(category => {
+    const filteredSites = category.sites.filter(site => 
+      site.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      site.url.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    return { ...category, sites: filteredSites };
+  }).filter(category => 
+    category.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    category.sites.length > 0
+  );
 
   return (
     <div className="app-container">
@@ -111,9 +126,18 @@ function App() {
 
       {/* --- メインコンテンツ --- */}
       <main className="main-content">
-        <h1>ダッシュボード</h1>
+        <div className="main-header">
+          <h1>ダッシュボード</h1>
+          <input 
+            type="text" 
+            className="search-bar"
+            placeholder="カテゴリやサイトを検索..."
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+          />
+        </div>
         <div className="dashboard">
-          {categories.map(category => (
+          {filteredCategories.map(category => (
             <div key={category.id} className="category-card">
               <div className="category-header">
                 {editingCategory && editingCategory.id === category.id ? (
@@ -129,28 +153,35 @@ function App() {
                   <h2>{category.name}</h2>
                 )}
                 <div className="category-actions">
-                  <button onClick={() => handleEditCategory(category)}><EditIcon /></button>
-                  <button onClick={() => handleDeleteCategory(category.id)}><DeleteIcon /></button>
+                  <button onClick={() => handleEditCategory(category)} title="カテゴリ名を編集"><EditIcon /></button>
+                  <button onClick={() => handleDeleteCategory(category.id)} title="カテゴリを削除"><DeleteIcon /></button>
                 </div>
               </div>
               <button onClick={() => handleLaunchAll(category.sites)} className="launch-btn">このカテゴリをすべて開く</button>
               <ul className="site-list">
                 {category.sites.map(site => (
                   <li key={site.id} className="site-item">
+                    <img 
+                      src={site.favicon_url || 'https://placehold.co/32x32/e9ecef/6c757d?text=?'} 
+                      alt="" 
+                      className="site-favicon" 
+                      onError={(e) => { e.target.onerror = null; e.target.src='https://placehold.co/32x32/e9ecef/6c757d?text=?'; }}
+                    />
                     <a href={site.url} target="_blank" rel="noopener noreferrer">{site.title}</a>
-                    <button onClick={() => handleDeleteSite(site.id)} className="delete-btn">×</button>
+                    <button onClick={() => handleDeleteSite(site.id)} className="delete-btn" title="サイトを削除">×</button>
                   </li>
                 ))}
               </ul>
             </div>
           ))}
         </div>
-         {showPopupNotice && (
-          <div className="popup-notice">
-            ブラウザによっては、ポップアップがブロックされる場合があります。その際は、このサイトのポップアップを許可してください。
-          </div>
-        )}
       </main>
+
+      {showPopupNotice && (
+        <div className="popup-notice">
+          ブラウザによっては、ポップアップがブロックされる場合があります。その際は、このサイトのポップアップを許可してください。
+        </div>
+      )}
     </div>
   );
 }
