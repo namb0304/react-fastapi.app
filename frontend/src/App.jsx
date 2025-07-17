@@ -136,7 +136,7 @@ function App() {
   };
 
   const handleDeleteCategory = categoryId => {
-    if (window.confirm('このカテゴリと、含まれる全てのサイトを削除します。よろしいですか？')) {
+    if (window.confirm('このカテゴリと含まれる全てのサイトを削除します。よろしいですか？')) {
       axios.delete(`${API_URL}/api/categories/${categoryId}`).then(fetchData);
     }
   };
@@ -145,12 +145,14 @@ function App() {
     axios.put(`${API_URL}/api/categories/${categoryId}`, { name: newName }).then(fetchData);
   };
   
-  function findContainer(id) {
-    if (typeof id === 'string' && id.startsWith('category-')) return 'root';
+  function getContainerId(id) {
+    if (id.toString().startsWith('category-')) {
+      return id;
+    }
     for (const category of categories) {
-        if (category.sites.some(s => `site-${s.id}` === id)) {
-            return `category-${category.id}`;
-        }
+      if (category.sites.some(s => `site-${s.id}` === id)) {
+        return `category-${category.id}`;
+      }
     }
     return null;
   }
@@ -164,16 +166,23 @@ function App() {
 
     if (activeId === overId) return;
 
-    const activeContainer = findContainer(activeId);
-    const overContainer = findContainer(overId);
+    const activeContainerId = getContainerId(activeId);
+    let overContainerId = getContainerId(overId);
+    
+    // サイトをカテゴリカード自体にドロップした場合の処理
+    if (overId.toString().startsWith('category-')) {
+        overContainerId = overId;
+    }
 
-    if (!activeContainer || !overContainer) return;
+    if (!activeContainerId || !overContainerId) return;
 
     // カテゴリの並び替え
-    if (activeContainer === 'root' && overContainer === 'root') {
+    if (activeId.toString().startsWith('category-')) {
         setCategories((items) => {
             const oldIndex = items.findIndex(item => `category-${item.id}` === activeId);
             const newIndex = items.findIndex(item => `category-${item.id}` === overId);
+            if (oldIndex === -1 || newIndex === -1) return items;
+
             const newArray = arrayMove(items, oldIndex, newIndex);
             const orderUpdates = newArray.map((cat, index) => ({ id: cat.id, order: index }));
             axios.post(`${API_URL}/api/update-order/categories`, orderUpdates);
@@ -184,18 +193,20 @@ function App() {
 
     // サイトの並び替え
     setCategories(prev => {
-        const sourceCatIndex = prev.findIndex(c => `category-${c.id}` === activeContainer);
-        const destCatIndex = prev.findIndex(c => `category-${c.id}` === overContainer);
+        const sourceCatIndex = prev.findIndex(c => `category-${c.id}` === activeContainerId);
+        const destCatIndex = prev.findIndex(c => `category-${c.id}` === overContainerId);
         const activeIndex = prev[sourceCatIndex].sites.findIndex(s => `site-${s.id}` === activeId);
+        
+        // overがサイトかカテゴリかで終点のインデックスを決める
         let overIndex;
-        if (prev[destCatIndex].sites.some(s => `site-${s.id}` === overId)) {
+        if (overId.toString().startsWith('site-')) {
             overIndex = prev[destCatIndex].sites.findIndex(s => `site-${s.id}` === overId);
-        } else {
+        } else { // カテゴリにドロップされた場合
             overIndex = prev[destCatIndex].sites.length;
         }
 
         let newCategories = JSON.parse(JSON.stringify(prev));
-        if (activeContainer === overContainer) { // カテゴリ内移動
+        if (activeContainerId === overContainerId) { // カテゴリ内移動
             newCategories[sourceCatIndex].sites = arrayMove(newCategories[sourceCatIndex].sites, activeIndex, overIndex);
             const orderUpdates = newCategories[sourceCatIndex].sites.map((site, index) => ({ id: site.id, order: index }));
             axios.post(`${API_URL}/api/update-order/sites`, orderUpdates);
@@ -210,7 +221,7 @@ function App() {
             axios.post(`${API_URL}/api/update-order/sites`, destOrderUpdates);
             
             const siteId = parseInt(activeId.replace('site-', ''));
-            const newCategoryId = parseInt(overContainer.replace('category-', ''));
+            const newCategoryId = parseInt(overContainerId.replace('category-', ''));
             axios.post(`${API_URL}/api/move-site`, { site_id: siteId, new_category_id: newCategoryId });
         }
         return newCategories;
@@ -231,11 +242,11 @@ function App() {
   return (
     <div className="app-container">
       <aside className="sidebar">
-        <h2>サイト管理</h2>
+        <h2>サイト管理アプリ</h2>
         <div className="form-section">
           <h3>新しいカテゴリを追加</h3>
           <form onSubmit={handleCreateCategory}>
-            <input type="text" value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} placeholder="カテゴリ名（例: 仕事用）" required />
+            <input type="text" value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} placeholder="カテゴリ名（例: 仕事用、課題）" required />
             <button type="submit" className="primary-btn">カテゴリ作成</button>
           </form>
         </div>
@@ -245,7 +256,7 @@ function App() {
             <input type="text" value={newSite.title} onChange={e => setNewSite({...newSite, title: e.target.value})} placeholder="サイト名 (空欄で自動取得)" />
             <input type="url" value={newSite.url} onChange={e => setNewSite({...newSite, url: e.target.value})} placeholder="URL" required />
             <select value={newSite.category_id} onChange={e => setNewSite({...newSite, category_id: e.target.value})} required>
-              <option value="" disabled>カテゴリを選択</option>
+              <option value="" disabled>カテゴリ選択</option>
               {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
             </select>
             <button type="submit" className="primary-btn">サイト追加</button>
