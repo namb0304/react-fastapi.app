@@ -9,6 +9,7 @@
   --light-text-color: #6c757d;
   --border-color: #e9ecef;
   --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --dragging-color: #e6f7ff; /* ドラッグ中の背景色 */
 }
 
 body {
@@ -115,6 +116,11 @@ body {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   display: flex;
   flex-direction: column;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.category-card.dragging {
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
 }
 
 .category-header {
@@ -124,6 +130,11 @@ body {
   margin-bottom: 15px;
   border-bottom: 1px solid var(--border-color);
   padding-bottom: 10px;
+  cursor: grab;
+}
+
+.category-header:active {
+  cursor: grabbing;
 }
 
 .category-header h2,
@@ -137,13 +148,14 @@ body {
   border: 1px solid transparent;
 }
 .category-header h2:hover {
-  background-color: #f0f0f0;
+  background-color: #f0efef;
   cursor: text;
 }
 .category-header input {
   border: 1px solid var(--primary-color);
   font-family: var(--font-family);
 }
+
 
 .category-actions button {
   background: none;
@@ -168,21 +180,39 @@ body {
   list-style: none;
   padding: 0;
   flex-grow: 1;
+  min-height: 50px; /* ドロップエリアを確保 */
+  border-radius: 6px;
 }
+.site-list.over {
+    background-color: var(--dragging-color);
+}
+
 
 .site-item {
   display: flex;
   align-items: center;
   padding: 5px;
-  border-bottom: 1px solid #f0f0f0;
   border-radius: 4px;
   transition: background-color 0.2s;
+  background-color: white;
+  margin-bottom: 5px;
 }
 .site-item:hover {
   background-color: #f8f9fa;
 }
-.site-item:last-child {
-  border-bottom: none;
+
+.site-item.dragging {
+  background-color: var(--dragging-color);
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.grab-handle {
+  cursor: grab;
+  padding: 5px;
+  color: var(--light-text-color);
+}
+.grab-handle:active {
+  cursor: grabbing;
 }
 
 .site-link-area {
