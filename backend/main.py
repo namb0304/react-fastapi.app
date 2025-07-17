@@ -10,24 +10,24 @@ from typing import List, Optional
 from urllib.parse import urlparse
 from bs4 import BeautifulSoup
 
-# --- 1. データベース接続設定 (PostgreSQL用) ---
+# --- 1. データベース接続設定 ---
 DB_USER = "s2422051"
 DB_PASSWORD = "mysecretpassword"
 DB_HOST = "localhost"
 DB_NAME = "s2422051"
-
 DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}/{DB_NAME}"
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
-# --- 2. データベースのモデル定義 (テーブル設計) ---
+# --- 2. データベースのモデル定義 ---
 class Category(Base):
     __tablename__ = "categories"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True)
-    sites = relationship("Site", back_populates="category", cascade="all, delete-orphan")
+    display_order = Column(Integer, default=0)
+    sites = relationship("Site", back_populates="category", cascade="all, delete-orphan", order_by="Site.display_order")
 
 class Site(Base):
     __tablename__ = "sites"
@@ -35,13 +35,14 @@ class Site(Base):
     title = Column(String, index=True)
     url = Column(String, index=True)
     favicon_url = Column(String, nullable=True)
+    display_order = Column(Integer, default=0)
     category_id = Column(Integer, ForeignKey("categories.id"))
     category = relationship("Category", back_populates="sites")
 
-# --- 3. Pydanticスキーマ定義 (APIのデータ型) ---
+# --- 3. Pydanticスキーマ定義 ---
 class SiteBase(BaseModel):
     url: str
-    title: Optional[str] = None # タイトルをオプショナルに変更
+    title: Optional[str] = None
 
 class SiteCreate(SiteBase):
     category_id: int
@@ -52,6 +53,7 @@ class SiteUpdate(BaseModel):
 class SiteResponse(SiteBase):
     id: int
     favicon_url: Optional[str] = None
+    display_order: int
     class Config:
         from_attributes = True
 
@@ -66,9 +68,18 @@ class CategoryUpdate(CategoryBase):
 
 class CategoryResponse(CategoryBase):
     id: int
+    display_order: int
     sites: List[SiteResponse] = []
     class Config:
         from_attributes = True
+
+class OrderUpdateRequest(BaseModel):
+    id: int
+    order: int
+
+class MoveSiteRequest(BaseModel):
+    site_id: int
+    new_category_id: int
 
 # --- 4. データベースのテーブル作成 ---
 Base.metadata.create_all(bind=engine)
@@ -93,10 +104,13 @@ def get_db():
         db.close()
 
 # --- 5. APIエンドポイント ---
+@app.get("/api/categories", response_model=List[CategoryResponse])
+def read_categories(db: Session = Depends(get_db)):
+    return db.query(Category).order_by(Category.display_order).all()
+
 @app.post("/api/sites", response_model=SiteResponse)
 def create_site(site: SiteCreate, db: Session = Depends(get_db)):
     title = site.title
-    # サイト名が空欄の場合、スクレイピングで取得
     if not title:
         try:
             headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36'}
@@ -110,7 +124,9 @@ def create_site(site: SiteCreate, db: Session = Depends(get_db)):
     
     favicon_url = f"https://www.google.com/s2/favicons?domain={urlparse(site.url).netloc}&sz=32"
     
-    db_site = Site(title=title, url=site.url, category_id=site.category_id, favicon_url=favicon_url)
+    max_order = db.query(Site).filter(Site.category_id == site.category_id).count()
+    
+    db_site = Site(title=title, url=site.url, category_id=site.category_id, favicon_url=favicon_url, display_order=max_order)
     db.add(db_site)
     db.commit()
     db.refresh(db_site)
@@ -128,16 +144,12 @@ def update_site_title(site_id: int, site_update: SiteUpdate, db: Session = Depen
 
 @app.post("/api/categories", response_model=CategoryResponse)
 def create_category(category: CategoryCreate, db: Session = Depends(get_db)):
-    db_category = Category(name=category.name)
+    max_order = db.query(Category).count()
+    db_category = Category(name=category.name, display_order=max_order)
     db.add(db_category)
     db.commit()
     db.refresh(db_category)
     return db_category
-
-@app.get("/api/categories", response_model=List[CategoryResponse])
-def read_categories(db: Session = Depends(get_db)):
-    categories = db.query(Category).all()
-    return categories
 
 @app.put("/api/categories/{category_id}", response_model=CategoryResponse)
 def update_category(category_id: int, category: CategoryUpdate, db: Session = Depends(get_db)):
@@ -166,3 +178,26 @@ def delete_site(site_id: int, db: Session = Depends(get_db)):
     db.delete(db_site)
     db.commit()
     return
+
+@app.post("/api/update-order/categories")
+def update_categories_order(order_updates: List[OrderUpdateRequest], db: Session = Depends(get_db)):
+    for update in order_updates:
+        db.query(Category).filter(Category.id == update.id).update({"display_order": update.order})
+    db.commit()
+    return {"message": "Categories order updated"}
+
+@app.post("/api/update-order/sites")
+def update_sites_order(order_updates: List[OrderUpdateRequest], db: Session = Depends(get_db)):
+    for update in order_updates:
+        db.query(Site).filter(Site.id == update.id).update({"display_order": update.order})
+    db.commit()
+    return {"message": "Sites order updated"}
+
+@app.post("/api/move-site")
+def move_site(move_request: MoveSiteRequest, db: Session = Depends(get_db)):
+    db_site = db.query(Site).filter(Site.id == move_request.site_id).first()
+    if not db_site:
+        raise HTTPException(status_code=404, detail="Site not found")
+    db_site.category_id = move_request.new_category_id
+    db.commit()
+    return {"message": "Site moved successfully"}
