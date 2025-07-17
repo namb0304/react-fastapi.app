@@ -1,4 +1,3 @@
-/* 変数を使って、色やフォントを管理しやすくします */
 :root {
   --primary-color: #007bff;
   --primary-hover-color: #0056b3;
@@ -24,7 +23,7 @@ body {
   height: 100vh;
 }
 
-/* --- サイドバー (フォームエリア) --- */
+/* --- サイドバー --- */
 .sidebar {
   width: 350px;
   background-color: var(--card-background-color);
@@ -73,7 +72,7 @@ body {
   box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
 }
 
-/* --- メインコンテンツ (ダッシュボード) --- */
+/* --- メインコンテンツ --- */
 .main-content {
   flex-grow: 1;
   padding: 30px;
@@ -127,9 +126,23 @@ body {
   padding-bottom: 10px;
 }
 
-.category-header h2 {
+.category-header h2,
+.category-header input {
   margin: 0;
   font-size: 1.25rem;
+  font-weight: bold;
+  padding: 4px;
+  border-radius: 4px;
+  width: 100%;
+  border: 1px solid transparent;
+}
+.category-header h2:hover {
+  background-color: #f0f0f0;
+  cursor: text;
+}
+.category-header input {
+  border: 1px solid var(--primary-color);
+  font-family: var(--font-family);
 }
 
 .category-actions button {
@@ -160,11 +173,25 @@ body {
 .site-item {
   display: flex;
   align-items: center;
-  padding: 10px 5px;
+  padding: 5px;
   border-bottom: 1px solid #f0f0f0;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+.site-item:hover {
+  background-color: #f8f9fa;
 }
 .site-item:last-child {
   border-bottom: none;
+}
+
+.site-link-area {
+  display: flex;
+  align-items: center;
+  flex-grow: 1;
+  text-decoration: none;
+  color: var(--text-color);
+  padding: 5px;
 }
 
 .site-favicon {
@@ -172,37 +199,48 @@ body {
   height: 20px;
   margin-right: 12px;
   border-radius: 4px;
+  flex-shrink: 0;
 }
 
-.site-item a {
-  color: var(--primary-color);
-  text-decoration: none;
-  transition: color 0.2s;
+.site-title-container {
   flex-grow: 1;
 }
 
-.site-item a:hover {
-  text-decoration: underline;
+.site-title-container input {
+  width: 95%;
+  padding: 4px;
+  font-size: 1rem;
+  border: 1px solid var(--primary-color);
+  border-radius: 4px;
+  font-family: var(--font-family);
 }
 
-.site-item .delete-btn {
+.site-actions {
+  display: flex;
+  align-items: center;
+}
+
+.site-actions button {
   background: none;
   border: none;
-  color: var(--danger-color);
   cursor: pointer;
-  font-weight: bold;
+  padding: 5px;
   opacity: 0.5;
   transition: opacity 0.2s;
-  padding: 5px;
-  font-size: 1.2rem;
-  line-height: 1;
 }
-
-.site-item:hover .delete-btn {
+.site-item:hover .site-actions button {
   opacity: 1;
 }
 
-/* --- ボタン共通スタイル --- */
+.site-actions svg {
+  width: 16px;
+  height: 16px;
+  fill: var(--light-text-color);
+}
+.site-actions button:hover svg {
+  fill: var(--text-color);
+}
+
 button {
   padding: 10px 15px;
   border: none;
@@ -223,29 +261,4 @@ button.primary-btn {
 }
 button.primary-btn:hover {
   background-color: var(--primary-hover-color);
-}
-
-.launch-btn {
-  background-color: #28a745;
-  width: 100%;
-  margin-bottom: 15px;
-}
-
-.launch-btn:hover {
-  background-color: #218838;
-}
-
-/* ポップアップ通知 */
-.popup-notice {
-  position: fixed;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  background-color: #333;
-  color: white;
-  padding: 12px 20px;
-  border-radius: 6px;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-  z-index: 1000;
-  font-size: 0.9rem;
 }
