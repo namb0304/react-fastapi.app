@@ -11,8 +11,6 @@ docker run --name my-postgres -e POSTGRES_USER=s2422051 -e POSTGRES_PASSWORD=mys
 93e915f730c42910d9fc068ac6cc52ae163c3d803118009aa2a1b72bc49b980c
 
 
-
-
 ### backendフォルダに移動
 cd ~/my_projects/my-dashboard/backend
 

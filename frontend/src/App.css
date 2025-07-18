@@ -1,15 +1,17 @@
 :root {
+  --primary-gradient: linear-gradient(45deg, #007bff, #0056b3);
   --primary-color: #007bff;
   --primary-hover-color: #0056b3;
   --danger-color: #dc3545;
-  --danger-hover-color: #c82333;
   --background-color: #f4f7f9;
   --card-background-color: #ffffff;
-  --text-color: #333;
+  --text-color: #212529;
   --light-text-color: #6c757d;
-  --border-color: #e9ecef;
+  --border-color: #dee2e6;
   --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --dragging-color: #e6f7ff; /* ドラッグ中の背景色 */
+  --card-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --card-hover-shadow: 0 8px 12px rgba(0, 0, 0, 0.15);
+  --favorite-color: #ffc107;
 }
 
 body {
@@ -17,6 +19,8 @@ body {
   background-color: var(--background-color);
   color: var(--text-color);
   margin: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .app-container {
@@ -28,8 +32,8 @@ body {
 .sidebar {
   width: 350px;
   background-color: var(--card-background-color);
-  padding: 20px;
-  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
+  padding: 25px;
+  box-shadow: 2px 0 15px rgba(0, 0, 0, 0.05);
   overflow-y: auto;
   border-right: 1px solid var(--border-color);
   display: flex;
@@ -37,19 +41,21 @@ body {
 }
 
 .sidebar h2 {
-  font-size: 1.5rem;
+  font-size: 1.6rem;
   margin-top: 0;
   border-bottom: 1px solid var(--border-color);
   padding-bottom: 15px;
+  color: var(--primary-color);
 }
 
 .form-section {
-  margin-bottom: 30px;
+  margin-bottom: 35px;
 }
 
 .form-section h3 {
-  font-size: 1.1rem;
+  font-size: 1.2rem;
   margin-bottom: 15px;
+  color: var(--text-color);
 }
 
 .form-section form {
@@ -60,18 +66,42 @@ body {
 
 .form-section input,
 .form-section select {
-  padding: 12px;
+  padding: 12px 15px;
   border: 1px solid var(--border-color);
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 1rem;
+  transition: all 0.2s ease-in-out;
 }
 
 .form-section input:focus,
 .form-section select:focus {
   outline: none;
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.2);
 }
+
+.color-picker {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 5px;
+}
+
+.color-swatch {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: transform 0.2s;
+}
+.color-swatch:hover {
+  transform: scale(1.1);
+}
+.color-swatch.selected {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 5px var(--primary-color);
+}
+
 
 /* --- メインコンテンツ --- */
 .main-content {
@@ -86,19 +116,29 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 25px;
 }
 
 .main-header h1 {
   margin: 0;
+  font-size: 2rem;
 }
 
 .search-bar {
-  padding: 10px;
+  padding: 12px 15px;
   width: 300px;
   border: 1px solid var(--border-color);
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 1rem;
+}
+
+.favorites-section {
+  margin-bottom: 30px;
+}
+.favorites-section h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .dashboard {
@@ -110,51 +150,45 @@ body {
 
 .category-card {
   background: var(--card-background-color);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 20px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border-top: 4px solid;
+  border-color: var(--border-color);
+  border-radius: 12px;
+  padding: 0;
+  box-shadow: var(--card-shadow);
   display: flex;
   flex-direction: column;
-  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+  transition: all 0.2s ease-in-out;
 }
-
-.category-card.dragging {
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+.category-card:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--card-hover-shadow);
 }
 
 .category-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 15px;
+  padding: 15px 20px;
   border-bottom: 1px solid var(--border-color);
-  padding-bottom: 10px;
 }
 
 .category-header h2,
 .category-header input {
   margin: 0;
   font-size: 1.25rem;
-  font-weight: bold;
+  font-weight: 600;
   padding: 4px;
   border-radius: 4px;
   width: 100%;
   border: 1px solid transparent;
 }
 .category-header h2:hover {
-  background-color: #f0f0f0;
+  background-color: #e9ecef;
   cursor: text;
 }
 .category-header input {
   border: 1px solid var(--primary-color);
   font-family: var(--font-family);
-}
-
-
-.category-actions {
-  display: flex;
-  align-items: center;
 }
 
 .category-actions button {
@@ -178,44 +212,20 @@ body {
 
 .site-list {
   list-style: none;
-  padding: 0;
+  padding: 10px;
   flex-grow: 1;
-  min-height: 50px; /* ドロップエリアを確保 */
-  border-radius: 6px;
 }
-.site-list.over {
-    background-color: var(--dragging-color);
-}
-
 
 .site-item {
   display: flex;
   align-items: center;
-  padding: 5px;
-  border-radius: 4px;
+  padding: 8px;
+  border-radius: 6px;
   transition: background-color 0.2s;
   background-color: white;
-  margin-bottom: 5px;
 }
 .site-item:hover {
-  background-color: #f8f9fa;
-}
-
-.site-item.dragging {
-  background-color: var(--dragging-color);
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-  z-index: 20;
-}
-
-.grab-handle {
-  display: flex;
-  align-items: center;
-  cursor: grab;
-  padding: 5px;
-  color: var(--light-text-color);
-}
-.grab-handle:active {
-  cursor: grabbing;
+  background-color: #f1f3f5;
 }
 
 .site-link-area {
@@ -224,7 +234,6 @@ body {
   flex-grow: 1;
   text-decoration: none;
   color: var(--text-color);
-  padding: 5px;
 }
 
 .site-favicon {
@@ -233,10 +242,6 @@ body {
   margin-right: 12px;
   border-radius: 4px;
   flex-shrink: 0;
-}
-
-.site-title-container {
-  flex-grow: 1;
 }
 
 .site-title-container input {
@@ -258,7 +263,7 @@ body {
   border: none;
   cursor: pointer;
   padding: 5px;
-  opacity: 0.5;
+  opacity: 0;
   transition: opacity 0.2s;
 }
 .site-item:hover .site-actions button {
@@ -274,24 +279,35 @@ body {
   fill: var(--text-color);
 }
 
+.favorite-btn svg {
+    fill: var(--light-text-color);
+}
+.favorite-btn.favorited svg {
+    fill: var(--favorite-color);
+}
+
+
+/* --- ボタン共通スタイル --- */
 button {
-  padding: 10px 15px;
+  padding: 12px 18px;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   color: white;
   font-size: 1rem;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.2s ease-in-out, transform 0.1s;
+  transition: all 0.2s ease-in-out;
 }
 
 button:active {
-    transform: scale(0.98);
+    transform: scale(0.97);
 }
 
 button.primary-btn {
-  background-color: var(--primary-color);
+  background: var(--primary-gradient);
+  box-shadow: 0 4px 10px rgba(0, 123, 255, 0.3);
 }
 button.primary-btn:hover {
-  background-color: var(--primary-hover-color);
+  box-shadow: 0 6px 12px rgba(0, 123, 255, 0.4);
+  transform: translateY(-2px);
 }
