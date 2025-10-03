@@ -1,13 +1,32 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import axios from 'axios';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, rectSortingStrategy, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { GoogleLogin } from '@react-oauth/google'; // Googleログインボタンをインポート
+import { jwtDecode } from 'jwt-decode'; // jwt-decodeをインポート
 import './App.css';
 
 const API_URL = 'http://127.0.0.1:8000';
 
+// --- axiosの共通設定（会員証を自動で提示する仕組み） ---
+// これを設定することで、今後axiosを使うすべての通信で自動的にトークンがヘッダーに追加されます。
+axios.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('accessToken');
+    if (token) {
+      config.headers['Authorization'] = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+
+// (SiteItem, CategoryCard コンポーネントは変更なしのため省略)
 // --- アイコンコンポーネント ---
 const EditIcon = () => <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"></path></svg>;
 const DeleteIcon = () => <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"></path></svg>;
@@ -80,7 +99,7 @@ function CategoryCard({ category, children, onDeleteCategory, onUpdateCategory }
      <div className={`category-card ${isDragging ? 'dragging' : ''}`} ref={setNodeRef} style={style} {...attributes}>
         <div className="category-header">
             {isEditing ? (
-                 <input type="text" value={name} onChange={e => setName(e.target.value)} onBlur={handleNameUpdate} onKeyDown={e => e.key === 'Enter' && handleNameUpdate()} autoFocus onClick={(e) => e.stopPropagation()} />
+                 <input type="text" value={name} onChange={e => setName(e.target.value)} onBlur={handleNameUpdate} onKeyDown={e => e.key === 'Enter' && handleNameUpdate()} autoFocus />
             ) : (
                 <h2 onDoubleClick={() => setIsEditing(true)} title="ダブルクリックで編集">{category.name}</h2>
             )}
@@ -94,22 +113,100 @@ function CategoryCard({ category, children, onDeleteCategory, onUpdateCategory }
   );
 }
 
+// --- ここからがApp本体の大きな変更点 ---
 function App() {
+  // 認証状態とユーザー情報を管理するためのstate
+  const [token, setToken] = useState(localStorage.getItem('accessToken'));
+  const [user, setUser] = useState(null);
+  
+  // ログイン成功時の処理
+  const handleLoginSuccess = async (credentialResponse) => {
+    try {
+      // Googleから受け取ったトークンをバックエンドに送信
+      const res = await axios.post(`${API_URL}/api/auth/google`, {
+        token: credentialResponse.credential,
+      });
+      const { access_token } = res.data;
+      // 受け取ったアクセストークンをlocalStorageに保存
+      localStorage.setItem('accessToken', access_token);
+      // stateを更新して再レンダリングをトリガー
+      setToken(access_token);
+    } catch (error) {
+      console.error("Login Failed:", error);
+      // エラーがあればトークンを削除
+      localStorage.removeItem('accessToken');
+      setToken(null);
+    }
+  };
+
+  // ログアウト処理
+  const handleLogout = () => {
+    localStorage.removeItem('accessToken');
+    setToken(null);
+    setUser(null);
+  };
+  
+  // トークンが変更された時にユーザー情報を取得
+  useEffect(() => {
+    if (token) {
+      try {
+        // トークンが有効か確認し、ユーザー情報をデコード
+        const decodedUser = jwtDecode(token);
+        setUser(decodedUser);
+      } catch (error) {
+        console.error("Invalid token:", error);
+        handleLogout(); // 無効なトークンならログアウトさせる
+      }
+    }
+  }, [token]);
+
+  // ログインしていない場合の表示
+  if (!token) {
+    return (
+      <div className="login-container">
+        <h1>Dashboard Login</h1>
+        <p>Please log in with your Google account to continue.</p>
+        <GoogleLogin
+          onSuccess={handleLoginSuccess}
+          onError={() => {
+            console.log('Login Failed');
+          }}
+        />
+      </div>
+    );
+  }
+
+  // ログインしている場合の表示 (Dashboardコンポーネント)
+  return <Dashboard onLogout={handleLogout} user={user} />;
+}
+
+// --- ダッシュボード部分を別のコンポーネントに分離 ---
+function Dashboard({ onLogout, user }) {
   const [categories, setCategories] = useState([]);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newSite, setNewSite] = useState({ title: '', url: '', category_id: '' });
   const [searchTerm, setSearchTerm] = useState('');
 
   const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
-
-  const fetchData = () => {
+  
+  // useCallbackを使って、不要な再生成を防ぐ
+  const fetchData = useCallback(() => {
     axios.get(`${API_URL}/api/categories`)
       .then(res => setCategories(res.data))
-      .catch(err => console.error("Error fetching data:", err));
-  };
+      .catch(err => {
+        console.error("Error fetching data:", err)
+        // 401エラー（トークン切れなど）ならログアウトさせる
+        if (err.response && err.response.status === 401) {
+          onLogout();
+        }
+      });
+  }, [onLogout]);
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
+  // (ここから下のハンドラ関数たちは、基本的に変更なし)
   // --- ハンドラ ---
   const handleCreateCategory = e => {
     e.preventDefault();
@@ -243,9 +340,15 @@ function App() {
     category.sites.length > 0
   ), [categories, searchTerm]);
 
+
   return (
     <div className="app-container">
       <aside className="sidebar">
+        {/* ユーザー情報とログアウトボタンを追加 */}
+        <div className="user-profile">
+            <p>Welcome, {user?.sub || 'User'}</p>
+            <button onClick={onLogout} className="logout-btn">Logout</button>
+        </div>
         <h2>サイト管理アプリ</h2>
         <div className="form-section">
           <h3>新しいカテゴリを追加</h3>
@@ -293,5 +396,6 @@ function App() {
     </div>
   );
 }
+
 
 export default App;

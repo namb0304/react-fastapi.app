@@ -23,3 +23,7 @@ cd ~/my_projects/my-dashboard/frontend
 
 ### Reactサーバー起動
 npm run dev
+
+
+google cloud クライアント ID
+836421431313-gvb58qo9abkiu7lbiuqpqfqe9egte9j3.apps.googleusercontent.com

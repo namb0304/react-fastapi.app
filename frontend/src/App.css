@@ -311,3 +311,49 @@ button.primary-btn:hover {
   box-shadow: 0 6px 12px rgba(0, 123, 255, 0.4);
   transform: translateY(-2px);
 }
+
+/* --- ログイン画面 --- */
+.login-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  background-color: var(--background-color);
+}
+.login-container h1 {
+  font-size: 2.5rem;
+  color: var(--primary-color);
+  margin-bottom: 1rem;
+}
+.login-container p {
+  font-size: 1.2rem;
+  color: var(--light-text-color);
+  margin-bottom: 2rem;
+}
+
+/* --- サイドバーのユーザー情報 --- */
+.user-profile {
+  padding: 15px;
+  margin-bottom: 20px;
+  background-color: #f1f3f5;
+  border-radius: 8px;
+  text-align: center;
+}
+.user-profile p {
+  margin: 0 0 10px 0;
+  font-weight: 600;
+  word-break: break-all;
+}
+.logout-btn {
+  background-color: var(--danger-color);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+.logout-btn:hover {
+  opacity: 0.9;
+}
